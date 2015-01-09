@@ -8,6 +8,57 @@ extern "C" int add(int a, int b) {
     return c;
 }
 
+extern "C" int missed_events_likelihood(double* jl_likelihood , double* jl_bursts, size_t burst_number, int* burst_lengths, int sizeAny, double* Q , int nopen, int k, double tau, double tcrit) {
+//   DCProgs::t_Bursts bursts{
+//    {0.1, 0.2, 0.1},                  /* 1st burst */
+//     {0.2},                            /* 2nd burst */
+//     {0.15, 0.16, 0.18, 0.05, 0.1}     /* 3rd burst */
+//  };
+
+
+    DCProgs::t_Bursts bursts;
+
+    double burst_time = 0;
+    int interval_count=0;
+    //printf("Set %zu has %zu bursts\n", set_no, m);
+    for (size_t b = 0; b < burst_number; b++){
+        printf("Burst %zu -> %zu elements\n", b, burst_length);
+
+        //put the bursts in the vector format required by dcprogs
+
+        DCProgs::t_Burst dburst;
+        size_t elem;
+        const double * burst = (double *)jl_bursts[b+sizeAny];
+        for ( elem = 0; elem < burst_length; elem++){
+            dburst.push_back(burst[elem]);
+            burst_time+=burst[elem];
+            interval_count++;
+            printf("%.16f", burst[elem]);
+        }
+        printf("\n");
+        bursts.push_back(dburst);
+    }
+
+
+
+  DCProgs::Log10Likelihood likelihood( bursts, nopen, tau,
+                                       tcrit);
+  
+  DCProgs::t_rmatrix qmatrix(k ,k);
+
+  for (int i=0; i < k; i++){
+      for (int j=0; j < k;j++){
+          qmatrix(i,j) = Q[(j*k)+i];
+          printf("[%d][%d] = %.16f\n",i,j,qmatrix(i,j));
+      }
+  }
+
+  //std::cout << likelihood << std::endl;
+  *jl_likelihood = likelihood(qmatrix) * log(10);
+  std::cout << *jl_likelihood << std::endl;
+  return 0;
+}
+
 extern "C" int dcprogs_julia_likelihood(double* jl_likelihood){
    DCProgs::t_Bursts bursts{
      {0.1, 0.2, 0.1},                  /* 1st burst */
