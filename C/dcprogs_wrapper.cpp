@@ -8,54 +8,59 @@ extern "C" int add(int a, int b) {
     return c;
 }
 
-extern "C" int missed_events_likelihood(double* jl_likelihood , double* jl_bursts, size_t burst_number, int* burst_lengths, int sizeAny, double* Q , int nopen, int k, double tau, double tcrit) {
-//   DCProgs::t_Bursts bursts{
-//    {0.1, 0.2, 0.1},                  /* 1st burst */
-//     {0.2},                            /* 2nd burst */
-//     {0.15, 0.16, 0.18, 0.05, 0.1}     /* 3rd burst */
-//  };
+extern "C" int missed_events_likelihood(double* jl_likelihood , double* jl_bursts, size_t interval_length, size_t* burst_lengths, size_t burst_number, double* Q , int nopen, int k, double tau, double tcrit, bool useChs) {
+    // jl_likelihood -> double*: to hold result
+    // jl_bursts -> double*: array of all intervals in the burst set (burst_array_length elements)
+    // interval_length -> size_t: length of jl_bursts, number of intervals in all the bursts 
+    // burst_number -> size_t: number of bursts
+    // burst_lengths -> size_t*: array of the lengths of all bursts (burst_number elements)
+    // Q -> double*: Q-matrix
+    // nopen -> int: number of open states in the mechanism
+    // k -> int: number of states in the mechanism
+    // tau -> double: resolution time for the burst set
+    // tcrit -> double: tcritical time for seperating the bursts
+    // useChs -> bool: whether to use chs vectors for low concnetration recordings
 
+  DCProgs::t_Bursts bursts;
 
-    DCProgs::t_Bursts bursts;
-
-    double burst_time = 0;
-    int interval_count=0;
-    //printf("Set %zu has %zu bursts\n", set_no, m);
-    for (size_t b = 0; b < burst_number; b++){
-        printf("Burst %zu -> %zu elements\n", b, burst_length);
-
-        //put the bursts in the vector format required by dcprogs
-
-        DCProgs::t_Burst dburst;
-        size_t elem;
-        const double * burst = (double *)jl_bursts[b+sizeAny];
-        for ( elem = 0; elem < burst_length; elem++){
-            dburst.push_back(burst[elem]);
-            burst_time+=burst[elem];
-            interval_count++;
-            printf("%.16f", burst[elem]);
-        }
-        printf("\n");
-        bursts.push_back(dburst);
+  size_t interval_count=0;
+  for (size_t b = 0; b < burst_number; b++){
+    DCProgs::t_Burst dburst;
+    size_t elem;
+    //std::cout << b << " Burst lengths " << burst_lengths[b] << std::endl;
+    for ( elem = 0; elem < burst_lengths[b]; elem++){
+      const double interval = jl_bursts[interval_count];
+      dburst.push_back(interval);
+      interval_count++;
+      //std::cout << "\t" << interval << std::endl;
     }
+    bursts.push_back(dburst);
+  }
+  std::cout << "interval count " << interval_count << std::endl;
+  //check the number of bursts equals burst_number and all the intervals have been accounted for
+  if (interval_count != interval_length) {
+    std::cout << "[WARN]: interval count does not equal the length of the intervals array" << interval_count << " vs " << interval_length << std::endl;
+  }
 
+  if( bursts.size() != burst_number) {
+    std::cout << "[WARN]: burst count does not match the number of bursts parsed " << bursts.size() << " vs " << burst_number << std::endl;
+  }
 
 
   DCProgs::Log10Likelihood likelihood( bursts, nopen, tau,
                                        tcrit);
   
   DCProgs::t_rmatrix qmatrix(k ,k);
-
   for (int i=0; i < k; i++){
       for (int j=0; j < k;j++){
           qmatrix(i,j) = Q[(j*k)+i];
-          printf("[%d][%d] = %.16f\n",i,j,qmatrix(i,j));
+          //printf("[%d][%d] = %.16f\n",i,j,qmatrix(i,j));
       }
   }
 
   //std::cout << likelihood << std::endl;
   *jl_likelihood = likelihood(qmatrix) * log(10);
-  std::cout << *jl_likelihood << std::endl;
+  //std::cout << *jl_likelihood << std::endl;
   return 0;
 }
 
@@ -76,9 +81,9 @@ extern "C" int dcprogs_julia_likelihood(double* jl_likelihood){
                 0,         0,    10,      0,  -10;
 
 
-  std::cout << likelihood << std::endl;
+  //std::cout << likelihood << std::endl;
   *jl_likelihood = likelihood(qmatrix) * log(10);
-  std::cout << *jl_likelihood << std::endl;
+  //std::cout << *jl_likelihood << std::endl;
   return 0;
 
 }
