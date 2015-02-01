@@ -26,33 +26,37 @@ Q = [-3025        25  3000      0    0;
 experimentno = length(concs)
 println("number of sets = $experimentno")
 # number of bursts in each set
-burstnos = zeros(Int32,experimentno)
+#burstnos = zeros(Int32,experimentno)
 likelihoods = zeros(Float64,experimentno)
+
+burstnos = Array(Any,experimentno)
+bsts = Array(Any,experimentno)
+burst_lengths = Array(Any,experimentno)
 
 #need the indexes for each burst set to delineate bursts
 counter=1
 for i=1:experimentno
-  burst_lengths = zeros(Csize_t,length(bursts[i]))
+  burst_lengths[i] = zeros(Csize_t,length(bursts[i]))
   for j=1:length(bursts[i])
-    burst_lengths[j] = length(bursts[i][j])
+    burst_lengths[i][j] = length(bursts[i][j])
   end
 
-  bsts = zeros(sum(burst_lengths))
+  bsts[i] = zeros(Float64,sum(burst_lengths[i]))
   counter = 1
   for j = 1:length(bursts[i])
     for m = 1:length(bursts[i][j])
-      bsts[counter] = bursts[i][j][m]
+      bsts[i][counter] = bursts[i][j][m]
       counter += 1
     end  
   end
 
-  println(string("number of burst intervals = " ,length(bsts)))
-  println(string("number of bursts = ", sum(burst_lengths)))
-  #println(string("burst intervals = " ,bsts))
+  println(string("number of burst intervals = " ,length(bsts[i])))
+  println(string("number of bursts = ", sum(burst_lengths[i])))
+  #println(string("burst intervals = " ,bsts[i]))
   
   likelihood = Cdouble[0]
   "extern C int missed_events_likelihood(double* jl_likelihood , double* jl_bursts, size_t interval_length, size_t* burst_lengths, size_t burst_number, double* Q , int nopen, int k, double tau, double tcrit, bool useChs)"
-  x=ccall((:missed_events_likelihood,"libdcprogs_wrapper"),Int32,(Ptr{Cdouble},Ptr{Float64},Csize_t,Ptr{Csize_t},Csize_t,Ptr{Float64},Int64,Int64,Float64,Float64,Bool),likelihood,bsts,length(bsts),burst_lengths,length(burst_lengths),Q, nopen, k, tres[i],tcrit[i],useChs[i])
+  x=ccall((:missed_events_likelihood,"libdcprogs_wrapper"),Int32,(Ptr{Cdouble},Ptr{Float64},Csize_t,Ptr{Csize_t},Csize_t,Ptr{Float64},Int64,Int64,Float64,Float64,Bool),likelihood,bsts[i],length(bsts[i]),burst_lengths[i],length(burst_lengths[i]),Q, nopen, k, tres[i],tcrit[i],useChs[i])
   likelihoods[i] = likelihood[1]
   println(string("Likelihood for set ", i , " = ", likelihood[1]))
 end
